@@ -4,13 +4,8 @@
 //////////////////////////////////
 module tb;
     reg clk;
-    logic [63:0] tx_in_test;
-    logic [63:0] tx_out_test;
-    logic [63:0] scram_out_s;
-    logic enable_ss;
-    logic b_in;
-    logic b_out;
-    logic enable_ps;
+    logic [63:0] tx_in_test; logic [63:0] tx_out_test; logic [63:0] scram_out_s;
+    logic enable_ss; logic b_in; logic b_out; logic enable_ps;
     logic [57:0] state_store;
     
     scrambler_para DUT1 ( .CLK(clk), 
@@ -29,12 +24,8 @@ module tb;
     always #5 clk = ~clk;
     
     initial begin
-        clk = 0;
-        tx_in_test = 0;
-        tx_out_test = 0;
-        enable_ps = 0;
-        enable_ss = 0;
-        state_store = 0;
+        clk = 0; tx_in_test = 0; tx_out_test = 0;
+        enable_ps = 0; enable_ss = 0; state_store = 0;
             
         #5; //Make some random ass data
         std::randomize(tx_in_test);
@@ -49,6 +40,7 @@ module tb;
         end
         enable_ss = 0;
         #50 $finish; 
+
     end 
 endmodule
 
@@ -59,7 +51,7 @@ module serial_scrambler(
                         output reg Bit_Out,
                         output reg [57:0] s
                         );
-    //Define Outputs and Inputs
+
     //x^1 + x^58 + x^39
     assign feedback = { Bit_In ^ s[57]  ^ s[38]};
     assign Bit_Out = feedback;
@@ -89,9 +81,6 @@ module scrambler_para(
     output reg [64:1] s1_64
     );
     
-    //latch the Data in to a Flip Flop 
-    // maybe not, but make sure its is flippity flopped before it comes into here
-
     always @(posedge CLK) begin
             if (enable == 1) begin 
                 s1_64[1] <= s1_64[7] ^ s1_64[26] ^ data_in[65];
