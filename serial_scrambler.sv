@@ -5,25 +5,28 @@
 //     into a testbench enviroment, to ensure equal outputs of a serial scrambler
 //     scrambler designed for the following polynomial G(x) = x^58 + x^39 + 1 
 //////////////////////////////////////////////////////////////////////////////////
-
 module serial_scrambler(
-                        Bit_In,
                         CLK,
-                        Bit_Out,
-                        enable 
+                        enable,
+                        reset,
+                        Bit_In,
+                        Bit_Out, 
                         );
     //Define Outputs and Inputs
     input wire CLK;
     input wire Bit_In;
     input wire enable
     output logic Bit_Out;
-    //x^1 + x^58 + x^39
+    //x^1 + x^58 + x^39; S stores current state
     reg [57:0] s;
     assign feedback = { Bit_In ^ s[57]  ^ s[38]};
     assign Bit_Out = feedback;
 
     always @(posedge clk) begin
-        if (enable == 1'b1) begin
+        if (reset == 1'b1) begin
+            s <= 58'b0000000000000000000000000000000000000000000000000000000000; 
+        end
+        else if (enable == 1'b1) begin
             states <= { s[57]:, s[55], s[54], s[53], s[52], s[51], s[50], s[49], s[48],
                         s[47], s[46], s[45], s[44], s[43], s[42], s[41], s[40], s[39],
                         s[38], s[37], s[36], s[35], s[34], s[33], s[32], s[31], s[30],
