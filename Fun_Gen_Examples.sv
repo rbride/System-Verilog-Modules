@@ -82,3 +82,10 @@ module top();
     end
 endmodule 
 
+//The top level module first defiens some interemiediate variables used in this example, and then assigns 
+//Constant values to the encoder and decoder inputs. The subroutine call of the generic encoder, ENCODER_F, 
+//uses the specialized class parameter value of 8 that represents the decoder width value for that specific instance
+// of the encoder while at the same time passing the input encoded value, encoder_in thi
+//uses the static class resolution operator :: is used to access the encoder subroutine 
+// Same for the decoder but it adds a param value of 4 instead of 8
+
