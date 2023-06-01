@@ -81,11 +81,43 @@ module top();
             decoder_in, decoder_out );
     end
 endmodule 
+/* 
+The top level module first defines some interemiediate variables used in this example, and then assigns 
+Constant values to the encoder and decoder inputs. The subroutine call of the generic encoder, ENCODER_F, 
+uses the specialized class parameter value of 8 that represents the decoder width value for that specific instance
+ of the encoder while at the same time passing the input encoded value, encoder_in thi
+uses the static class resolution operator :: is used to access the encoder subroutine 
+Same for the decoder but it adds a param value of 4 instead of
+*/
 
-//The top level module first defiens some interemiediate variables used in this example, and then assigns 
-//Constant values to the encoder and decoder inputs. The subroutine call of the generic encoder, ENCODER_F, 
-//uses the specialized class parameter value of 8 that represents the decoder width value for that specific instance
-// of the encoder while at the same time passing the input encoded value, encoder_in thi
-//uses the static class resolution operator :: is used to access the encoder subroutine 
-// Same for the decoder but it adds a param value of 4 instead of 8
+///////////////////////////////////////////////////////
+///    GENERATE CONSTRUCTS  ///////////////////////////
+///////////////////////////////////////////////////////
+/*      ### NOTES ###
+ Generate constructs are used to either conditionally or multiply instantiate generate blocks into a model
+ a generate block is a collection of one or more module items. 
+ contains no decls, specparam decls, and does not specify blocks
+ All declared params are local
+ All other module items including other generate constructs are allowed
+ 
+ Gernate Constructs provide the ability for parameter values to affect the structure of a design. 
+ They also allow for modules with repetitive structures to be described more cocisely and make recusive instatiation possible
+
+    Two types
+        Loop Generate Constructs:
+            Allow a single generate block to be instatiated into a model multiple times
+        Conditional Generate Constructs: 
+            Include if-generate and case-generate constructs, instatiate at most one generate block from a set
+            of generate blocks defined by the code
+        
+Generate Schemes are evalutated during the design elaboration step, and even though the syntax may appear like behavior design
+statments, they do not execute at simulation time. and determined completely before simulation begins. Therefore all the expressions
+ina generate schemes shall be constant expressions deterministic at elboration time.
+
+Like module instatiation, generate schemes instantiate a block with hierarchy the difference being that the genreate block can
+call and execute upon stuff defined in the module above it that is instatiating it
+
+Generate and endgernate can be used to define generate region, tho this is optional. and can be left to be contextually determined by parser
+
+*/
 
