@@ -91,7 +91,7 @@ Same for the decoder but it adds a param value of 4 instead of
 */
 
 ///////////////////////////////////////////////////////
-///    GENERATE CONSTRUCTS  ///////////////////////////
+///   GENERATE CONSTRUCTS   ///////////////////////////
 ///////////////////////////////////////////////////////
 /*      ### NOTES ###
  Generate constructs are used to either conditionally or multiply instantiate generate blocks into a model
@@ -117,7 +117,57 @@ ina generate schemes shall be constant expressions deterministic at elboration t
 Like module instatiation, generate schemes instantiate a block with hierarchy the difference being that the genreate block can
 call and execute upon stuff defined in the module above it that is instatiating it
 
-Generate and endgernate can be used to define generate region, tho this is optional. and can be left to be contextually determined by parser
+Generate and endgernate can be used to define generate region, tho this is optional. and can be left to be contextually determined by parser */
 
+
+
+///////////////////////////////////////////////////////
+///   LOOP GENERATE CONSTRUCTS   //////////////////////
+///////////////////////////////////////////////////////
+/*
+Allows a generate block to be instatiated multiple times using for loop syntax. Loop Index variable is declared a genvar Declaration 
+prior to itsuse in a loop scheme
+
+The genvar is not to be referenced anywhere other than inside the loop. all params inside the generate are implicit localparams decls
+Its not possible to have two nested loop generate constructs that use the same genvar.
+
+generate blocks inside the loop construct can be named or unnamed. 
+
+if the generate block is named it is declared as an array of generate block instances which use the genvar value as its index value
 */
+
+//Example of legal and illegal generate loop page 789 
+module mod_a;
+    genvar i;
+    // the generate and endgenerate keywords are not required
+    
+    for ( i=0; i<5; i++ ) begin : a //naming the loop a
+        for ( i=0; i<5; i++ ) begin : b
+            ...     // error using "i" as loop index for 
+            ...     // Two nested generate loops will cause an error need to make another genvar
+        end
+    end
+endmodule 
+
+module mod_b;
+    genvar i;
+    logic a;
+
+    for ( i=1; i<0; i++ )  begin : a
+        ...     //Error because the block name conflicts with the variable a
+    end
+endmodule
+
+module mod_c;
+    genvar i;
+
+    for ( i=1; i<5; i++ ) begin : a 
+        ...
+    end
+
+    for ( i=10; i<15; i++ ) begin : a
+        ...         //Error because the block conflicts with previous loop 
+        ...         // regardless of the fact that the indices are unique
+    end
+endmodule
 
