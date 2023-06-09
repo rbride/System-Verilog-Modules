@@ -28,17 +28,30 @@ module Descrambler_64bit(
 
 endmodule
 
+//Set FEED_FORWARD to 0 (off) for scrambling, 1 for Descrambling
+//LFSR_WIDTH localparam because always g(x) = x^58 + x^39 + 1
+//Potentially add Param Option to reverse lsb to msb bits ordering
 module Parallel_LFSR #(
     parameter DATA_WIDTH = 64,
-    parameter FEED_FORWARD = 0  //Set FEED_FORWARD to 0 (off) for scrambling, 1 for Descrambling
-    //paramet REVERSE = 0 Potentially add Param Option to reverse lsb to msb bits ordering
-)
-(
+    parameter FEED_FORWARD = 0,  
+    localparam LFSR_WIDTH = 58
+)(
     input wire [DATA_WIDTH-1:0] data_in,
-    input wire [57:0] lfsr_state_in,
     output wire [DATA_WIDTH-1:0] data_out,
-    output wire [57:0] lfsr_state_out
+    input wire [LFSR_WIDTH-1:0] lfsr_state_in,
+    output wire [LFSR_WIDTH-1:0] lfsr_state_out
 );
+
+
+//Works in two parts: statically computes a set of bit masks, then uses these bit masks to
+//select bits for XORing to compute the next state.  
+function [LFSR_WIDTH+DATA_WIDTH-1:0] lfsr_mask(input [31:0] index);
+    reg [LFSR_WIDTH-1:0] lfsr_mask_state_in [LFSR_WIDTH-1:0]; //[0-57][0-57] array
+    reg [DATA_WIDTH-1:0] lfsr_mask_data [LFSR_WIDTH-1:0];
+    reg [LFSR_WIDTH-1:0] mask_output_state[DATA_WIDTH-1:0];
+    reg [DATA_WIDTH-1:0] mask_output_data[DATA_WIDTH-1:0];
+
+endfunction
 
 
 endmodule 
