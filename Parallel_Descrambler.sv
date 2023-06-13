@@ -73,7 +73,9 @@ endmodule
 module Parallel_LFSR #(
     parameter DATA_WIDTH = 64,
     parameter FEED_FORWARD = 0,  
-    localparam LFSR_WIDTH = 58
+    localparam LFSR_WIDTH = 58,
+    // LFSR_Poly = 58'h8000000001 1 at the end for the +1 8 is for + 38 the highest val ignored
+    localparam Polynom = 58'h8000000001
 )(
     input wire [DATA_WIDTH-1:0] data_in,
     output wire [DATA_WIDTH-1:0] data_out,
@@ -94,7 +96,7 @@ function [LFSR_WIDTH+DATA_WIDTH-1:0] lfsr_mask(input [31:0] index);
 
     reg [DATA_WIDTH-1:0] data_mask;
 
-    interger i, j; //Index for arrays
+    integer i, j; //Index for arrays
 
     begin 
         //initialize bit masks
@@ -108,7 +110,7 @@ function [LFSR_WIDTH+DATA_WIDTH-1:0] lfsr_mask(input [31:0] index);
             if ( i<LFSR_WIDTH ) begin
                 mask_output_state[i][i] = 1'b1;
             end
-            output_mask_data[i] = 0;
+            mask_output_data[i] = 0;
         end
 
         //Shift register work
@@ -118,8 +120,6 @@ function [LFSR_WIDTH+DATA_WIDTH-1:0] lfsr_mask(input [31:0] index);
             data_value = lfsr_mask_data[LFSR_WIDTH-1];
             data_value = data_value ^ data_mask;
 
-            // LFSR_Poly = 58'h8000000001 1 at the end for the +1 8 is for + 38 the highest val ignored
-            localparam Polynom = 58'h8000000001;
             //Add XOR inputs 
             for ( j=1; j<LFSR_WIDTH; j++ ) begin
                 if (( Polynom >> j ) & 1 ) begin
@@ -135,11 +135,11 @@ function [LFSR_WIDTH+DATA_WIDTH-1:0] lfsr_mask(input [31:0] index);
             end
             for ( j=DATA_WIDTH-1; j>0; j-- ) begin
                 mask_output_state[j] = mask_output_state[j-1];
-                output_mask_data[j] = output_mask_data[j-1];
+                mask_output_data[j] = mask_output_data[j-1];
             end
             
             mask_output_state[0] = state_value;
-            output_mask_data[0] = data_value;
+            mask_output_data[0] = data_value;
 
             if (FEED_FORWARD) begin 
                 //Shift in new input data
@@ -155,7 +155,7 @@ function [LFSR_WIDTH+DATA_WIDTH-1:0] lfsr_mask(input [31:0] index);
             data_value = lfsr_mask_data[index]; 
         end else begin
             state_value = mask_output_state[index-LFSR_WIDTH];
-            data_value = output_mask_data[index-LFSR_WIDTH];
+            data_value = mask_output_data[index-LFSR_WIDTH];
         end
         lfsr_mask = { data_value, state_value };
     end
@@ -171,7 +171,7 @@ generate
         //Assign output of reg
         assign lfsr_state_out[i] = state_reg; 
 
-        interger g;
+        integer g;
 
         always @* begin
             state_reg = 1'b0;
