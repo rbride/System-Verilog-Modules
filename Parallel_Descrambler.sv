@@ -92,10 +92,38 @@ function [LFSR_WIDTH+DATA_WIDTH-1:0] lfsr_mask(input [31:0] index);
             end
 
             //Shift 
+            for ( j=LFSR_WIDTH-1; j>0; j-- ) begin
+                lfsr_mask_state_in[j] = lfsr_mask_state_in[j-1];
+                lfsr_mask_data[j] = lfsr_mask_data[j-1];               
+            end
+            for ( j=DATA_WIDTH-1; j>0; j-- ) begin
+                mask_output_state[j] = mask_output_state[j-1];
+                output_mask_data[j] = output_mask_data[j-1];
+            end
+            
+            mask_output_state[0] = state_value;
+            output_mask_data[0] = data_value;
 
+            if (FEED_FORWARD) begin 
+                //Shift in new input data
+                state_value = {LFSR_WIDTH{1'b0}};
+                data_value = data_mask;
+            end
+            lfsr_mask_state_in[0] = state_value;
+            lfsr_mask_data[0] = data_value;
+        end
+        
+        if (index < LFSR_WIDTH) begin
+            state_value = lfsr_mask_state_in[index];
+            data_value = lfsr_mask_data[index]; 
+        end else begin
+            state_value = mask_output_state[index-LFSR_WIDTH];
+            data_value = output_mask_data[index-LFSR_WIDTH];
         end
 
+        lfsr_mask = { data_value, state_value };
     end
+
 endfunction
 
 
