@@ -39,8 +39,8 @@
 */
 
 module Descrambler_64bit(
-    input CLK,
-    input rst,
+    input wire CLK,
+    input wire rst,
     input wire [63:0] Sr_In, //Scrambled Data as input
     output wire [63:0] D_UnS  //The Unscrambled data as the output
     );
