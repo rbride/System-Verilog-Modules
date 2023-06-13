@@ -38,28 +38,6 @@
         DOUT
 */
 
-// input wire [DATA_WIDTH-1:0] data_in,     input  wire [DATA_WIDTH-1:0] data_in,
-// output wire [DATA_WIDTH-1:0] data_out,          output wire [DATA_WIDTH-1:0] data_out,
-// input wire [LFSR_WIDTH-1:0] lfsr_state_in,  input  wire [LFSR_WIDTH-1:0] state_in,
-// output wire [LFSR_WIDTH-1:0] lfsr_state_out  output wire [LFSR_WIDTH-1:0] state_out
-
-//       lfsr #(
-//         .LFSR_WIDTH(58),
-//         .LFSR_POLY(58'h8000000001),
-//         .LFSR_CONFIG("FIBONACCI"),
-//         .LFSR_FEED_FORWARD(0),
-//         .REVERSE(1),
-//         .DATA_WIDTH(64),
-//         .STYLE("LOOP")
-//     ) 
-//     scrambler_inst (
-//     .data_in(encoded_tx_data),
-//     .state_in(scrambler_state_reg),
-//     .data_out(scrambled_data),
-//     .state_out(scrambler_state)
-//     );
-
-
 module Descrambler_64bit(
     input CLK,
     input rst,
