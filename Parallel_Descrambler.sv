@@ -12,6 +12,32 @@
 //
 //////////////////////////////////////////////////////////////////////////////////
 
+/*
+    Standard LFSR (Srambler)
+        DIN (LSB first)
+         |
+         V
+        (+)<---------------------------(+)<-----------------------------.
+         |                              ^                               |
+         |  .----.  .----.       .----. |  .----.       .----.  .----.  |
+         +->|  0 |->|  1 |->...->| 38 |-+->| 39 |->...->| 56 |->| 57 |--'
+         |  '----'  '----'       '----'    '----'       '----'  '----'
+         V
+        DOUT
+
+    FEED Forward LFSR (Descrambler)
+        DIN (LSB first)
+         |
+         |  .----.  .----.       .----.    .----.       .----.  .----.
+         +->|  0 |->|  1 |->...->| 38 |-+->| 39 |->...->| 56 |->| 57 |--.
+         |  '----'  '----'       '----' |  '----'       '----'  '----'  |
+         |                              V                               |
+        (+)<---------------------------(+)------------------------------'
+         |
+         V
+        DOUT
+*/
+
 module Descrambler_64bit(
     input CLK,
     input rst,
@@ -29,7 +55,6 @@ module Descrambler_64bit(
 
 endmodule
 
-
 //Set FEED_FORWARD to 0 (off) for scrambling, 1 for Descrambling
 //LFSR_WIDTH localparam because always g(x) = x^58 + x^39 + 1
 module Parallel_LFSR #(
@@ -42,7 +67,6 @@ module Parallel_LFSR #(
     input wire [LFSR_WIDTH-1:0] lfsr_state_in,
     output wire [LFSR_WIDTH-1:0] lfsr_state_out
 );
-
 
 //Works in two parts: statically computes a set of bit masks, then uses these bit masks to
 //select bits for XORing to compute the next state.  
@@ -120,54 +144,61 @@ function [LFSR_WIDTH+DATA_WIDTH-1:0] lfsr_mask(input [31:0] index);
             state_value = mask_output_state[index-LFSR_WIDTH];
             data_value = output_mask_data[index-LFSR_WIDTH];
         end
-
         lfsr_mask = { data_value, state_value };
     end
-
 endfunction
 
+genvar i;
+generate 
+    //Use nested loops to generate the necessary circuit
+    for ( i=0; i<LFSR_WIDTH; i++ ) begin
+        wire [LFSR_WIDTH+DATA_WIDTH-1:0] mask = lfsr_mask(i);
+        //Register to store the current state
+        reg state_reg;
+        //Assign output of reg
+        assign lfsr_state_out[i] = state_reg; 
+
+        interger g;
+
+        always @* begin
+            state_reg = 1'b0;
+            for ( g=0; g<LFSR_WIDTH; g++ ) begin
+                if (mask[g] ) begin
+                    state_reg = state_reg ^ lfsr_state_in[g];
+                end
+            end
+            for ( g=0; g<DATA_WIDTH; g++ ) begin
+                if (mask[g+LFSR_WIDTH]) begin
+                    state_reg = state_reg ^ data_in[g];
+                end
+            end
+        end
+    end
+    //Second Loop
+    for ( i=0; i<DATA_WIDTH; i++ ) begin
+        wire [LFSR_WIDTH+DATA_WIDTH-1:0] mask = lfsr_mask(i+LFSR_WIDTH);
+        //Storage Register for data
+        reg data_reg;
+        //Assign output to the reg
+        assign data_out[i] = data_reg;
+
+        integer g;
+
+        always @* begin
+            data_reg = 1'b0;
+            for ( g=0; g<LFSR_WIDTH; g++ ) begin
+                if ( mask[g]) begin
+                    data_reg = data_reg ^ lfsr_state_in[g];
+                end
+            end
+            for ( g=0; g<DATA_WIDTH; g++ ) begin
+                if (mask[g+LFSR_WIDTH]) begin
+                    data_reg = data_reg ^ data_in[g];
+                end
+            end
+        end
+    end
+    //Generate Process Ended
+endgenerate
 
 endmodule 
-
-
-
-//       lfsr #(
-//         .LFSR_WIDTH(58),
-//         .LFSR_POLY(58'h8000000001),
-//         .LFSR_CONFIG("FIBONACCI"),
-//         .LFSR_FEED_FORWARD(0),
-//         .REVERSE(1),
-//         .DATA_WIDTH(64),
-//         .STYLE("LOOP")
-//     ) 
-//     scrambler_inst (
-//     .data_in(encoded_tx_data),
-//     .state_in(scrambler_state_reg),
-//     .data_out(scrambled_data),
-//     .state_out(scrambler_state)
-//     );
-/*
-    Standard LFSR (Srambler)
-        DIN (LSB first)
-         |
-         V
-        (+)<---------------------------(+)<-----------------------------.
-         |                              ^                               |
-         |  .----.  .----.       .----. |  .----.       .----.  .----.  |
-         +->|  0 |->|  1 |->...->| 38 |-+->| 39 |->...->| 56 |->| 57 |--'
-         |  '----'  '----'       '----'    '----'       '----'  '----'
-         V
-        DOUT
-
-    FEED Forward LFSR (Descrambler)
-        DIN (LSB first)
-         |
-         |  .----.  .----.       .----.    .----.       .----.  .----.
-         +->|  0 |->|  1 |->...->| 38 |-+->| 39 |->...->| 56 |->| 57 |--.
-         |  '----'  '----'       '----' |  '----'       '----'  '----'  |
-         |                              V                               |
-        (+)<---------------------------(+)------------------------------'
-         |
-         V
-        DOUT
-*/
