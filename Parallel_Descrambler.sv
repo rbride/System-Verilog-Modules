@@ -38,6 +38,28 @@
         DOUT
 */
 
+// input wire [DATA_WIDTH-1:0] data_in,     input  wire [DATA_WIDTH-1:0] data_in,
+// output wire [DATA_WIDTH-1:0] data_out,          output wire [DATA_WIDTH-1:0] data_out,
+// input wire [LFSR_WIDTH-1:0] lfsr_state_in,  input  wire [LFSR_WIDTH-1:0] state_in,
+// output wire [LFSR_WIDTH-1:0] lfsr_state_out  output wire [LFSR_WIDTH-1:0] state_out
+
+//       lfsr #(
+//         .LFSR_WIDTH(58),
+//         .LFSR_POLY(58'h8000000001),
+//         .LFSR_CONFIG("FIBONACCI"),
+//         .LFSR_FEED_FORWARD(0),
+//         .REVERSE(1),
+//         .DATA_WIDTH(64),
+//         .STYLE("LOOP")
+//     ) 
+//     scrambler_inst (
+//     .data_in(encoded_tx_data),
+//     .state_in(scrambler_state_reg),
+//     .data_out(scrambled_data),
+//     .state_out(scrambler_state)
+//     );
+
+
 module Descrambler_64bit(
     input CLK,
     input rst,
@@ -48,9 +70,22 @@ module Descrambler_64bit(
     reg [57:0] lfsr_state_reg; //The Saved state of the 
     wire [57:0] lfsr_state_out; //Output of those registers
 
+    //Initialize the Sub Module Parallel Lfsr
+    Parallel_LFSR #( 
+            .DATA_WIDTH(64),
+            .FEED_FORWARD(1)
+    )
+    Descramb_Inst (
+        .data_in(Sr_In),
+        .data_out(D_UnS),
+        .lfsr_state_in(lfsr_state_reg),
+        .lfsr_state_out(lfsr_state_out)
+    );
+
     //Set State in of LFSR to State Out every posedge CLK
-    //...
-    //...
+    always @(posedge CLK) begin
+        lfsr_state_reg <= lfsr_state_out;
+    end
 
 
 endmodule
