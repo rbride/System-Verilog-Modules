@@ -4,22 +4,58 @@
 // Engineer: 
 // 
 // Create Date: 05/05/2023 02:57:01 PM
+// Design Name: 
 // Module Name: scrambler_64bit
+// Project Name: 
+// Target Devices: 
+// Tool Versions: 
+// Description: 
+// The
 // Dependencies: 
-//      Clause 82 802.3-2022 Complaint Scrambler portion of PCS unit for 40GBASE-R spec 64B/66B
-//      Scrambler. Works in parallel to achieve G(x) - x^58 + x^39 + 1 at significantly faster speed
-//      So 40G/s can be achieved in 1 clock cycle by running 2 of these in parallel
-//      As each should have a throughput of 20gb/s
+// 
+// Revision:
+// Revision 0.01 - File Created
+// Additional Comments:
+// 
 //////////////////////////////////////////////////////////////////////////////////
 
-module scrambler_64bit(
+// make a visual example of the intended appearence of said block a the theory of the timing diagram based on this
+// Ideal design or whatever, and add it to you notes powerpoint
+module scrambler_64bit #
+( 
+    //Reverse Bit Order
+    parameter REVERSE = 0
+)
+(
     input CLK,
+    //input zero_out_scrambler,
     //set to 1-64 and 65-128 because it more so matches my table and 
     //to prevent confusion while I am building the block
     input logic [128:65] data_in,
-    output reg [64:1] s1_64
-    );
+    output reg [64:1] data_out
     
+);
+    
+    //latch the Data in to a Flip Flop 
+    // Structures fine but do it so that is has the same structure as the Descrambler for parity. 
+    //Default the state register starting at all ones yeet gets exact same results as reference
+    //reg [64:1] s1_64 = { 32{2'b10}};
+    reg [64:1] s1_64 = { {58{1'b1}},  6'b000000 };
+    
+    //Reverse Option
+    generate 
+        genvar n;
+        
+        if ( REVERSE ) begin
+            for ( n=0; n<65; n++ ) begin
+                assign data_out[n] = s1_64[65-n-1];
+            end
+        end else begin
+            assign data_out = s1_64;
+        end
+      
+    endgenerate  
+       
     always @(posedge CLK) begin
             s1_64[1] <= s1_64[7] ^ s1_64[26] ^ data_in[65];
             s1_64[2] <= s1_64[8] ^ s1_64[27] ^ data_in[66]; 
