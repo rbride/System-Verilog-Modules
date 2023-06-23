@@ -1,6 +1,5 @@
 `timescale 1ns/1ps 
 `default_nettype none
-
 //Top Level Contains all units
 module PCS 
 (
@@ -10,14 +9,10 @@ module PCS
     //Output
 )
 
-
-
-
 endmodule
 
-// make a visual example of the intended appearence of said block a the theory of the timing diagram based on this
-// Ideal design or whatever, and add it to you notes powerpoint Still needs Done
 // By Default Scrambles Least Significant Bit First, LSB, Setting Reverse to 1 would Reverse this to MSB
+// set to 7-64 for register and 65-128 for data in because it more so matches my truth 
 module scrambler_64bit #
 ( 
     parameter REVERSE = 0,
@@ -25,14 +20,12 @@ module scrambler_64bit #
 )
 (
     input CLK,
-    input rst, //Resets the State Register
-    input enable_scrambler, //Self Explanatory 
-    //to prevent confusion while I am building the block
-    //set to 1-64 for register and 65-128 for data in because it more so matches my table and 
+    input rst, //Resets the LFSR State Register
+    input enable_scrambler, 
     input logic [128:65] data_in,
     output reg [63:0] data_out
 );
-    //Default the state register starting at all ones. 
+    //Default the LFSR state register starting at all ones. 
     // Bottom 6 are 0's because it doesn't matter only the top 58 are used in computations 
     reg [64:7] s1_64 = { {58{1'b1}},  6'b000000 };
     
@@ -46,10 +39,10 @@ module scrambler_64bit #
         end else begin
             assign data_out = s1_64;
         end
-      
     endgenerate  
    
-    assign s1_64[64:7] = data_out[63:6]; // Save the Next State
+    // Save the Next State
+    assign s1_64[64:7] = data_out[63:6]; 
 
     always @(posedge CLK) begin
         if (rst == 1 ) begin
@@ -60,7 +53,7 @@ module scrambler_64bit #
         if ( ENABLE == 0 ) begin
             //Pass Through
             data_out <= data_in;
-        end else  begin
+        end else  begin            
             data_out[1] <= s1_64[7] ^ s1_64[26] ^ data_in[65];
             data_out[2] <= s1_64[8] ^ s1_64[27] ^ data_in[66]; 
             data_out[3] <= s1_64[9] ^ s1_64[28] ^ data_in[67];
@@ -129,3 +122,4 @@ module scrambler_64bit #
     end
 endmodule
 
+`resetall
