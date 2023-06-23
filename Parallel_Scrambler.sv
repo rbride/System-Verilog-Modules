@@ -14,12 +14,20 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 // By Default Scrambles Least Significant Bit First, LSB, Setting Reverse to 1 would Reverse this to MSB
-module scrambler_64bit #none
-    //set to 1-64 for register and 65-128 for data in because it more so matches my table and 
+// set to 7-64 for register and 65-128 for data in because it more so matches my truth 
+module scrambler_64bit #
+( 
+    parameter REVERSE = 0,
+    parameter ENABLE = 1  // Scrambling Disabled in EEE mode just pass through
+)
+(
+    input CLK,
+    input rst, //Resets the LFSR State Register
+    input enable_scrambler, 
     input logic [128:65] data_in,
     output reg [63:0] data_out
 );
-    //Default the state register starting at all ones. 
+    //Default the LFSR state register starting at all ones. 
     // Bottom 6 are 0's because it doesn't matter only the top 58 are used in computations 
     reg [64:7] s1_64 = { {58{1'b1}},  6'b000000 };
     
@@ -33,10 +41,10 @@ module scrambler_64bit #none
         end else begin
             assign data_out = s1_64;
         end
-      
     endgenerate  
    
-    assign s1_64[64:7] = data_out[63:6]; // Save the Next State
+    // Save the Next State
+    assign s1_64[64:7] = data_out[63:6]; 
 
     always @(posedge CLK) begin
         if (rst == 1 ) begin
