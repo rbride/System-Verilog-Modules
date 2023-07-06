@@ -27,30 +27,28 @@ module PCS #
     output [3:0] temp_error_outputs
 );
 
- /* Sample for fork
- for (int i = 0;i < 5;i++) begin
-  fork
-    thread(i)
-  join_none
+wire [66*LANES-1:0] encoded_tx_data;
+
+initial begin
+    //This Makes me laugh :)
+    encode_tx_data = (DATA_WIDTH*LANES+HEADER_WIDTH*LANES-1)'b0;
 end
- */
+
+always @* begin
+    fork
+        begin : encode_128_bits
+            for(int i=0; i<LANES; i++) begin : for_loop
+                encode_tx_data  ( .data_bits(TXD[DATA_WIDTH*(i+1)-1 -: DATA_WIDTH]), 
+                                  .control_bits(TX_C[CONTROL_WIDTH*(i+1)-1 -: CONTROL_WIDTH]),
+                                  .encoded_data(encode_tx_data[66*(i+1)-1 -: 66]) 
+                                );
+            end : for_loop    
+        end : encode_128_bits
+    join_none;
+    wait fork; //Wait for all the above join nones to complete
+end 
 
 
-/* Function to Do the Encoding, its a function not a task because their should be no time that happens 
-The Following Example is for The Encoding for the all Control blocks and LPI is the signal
-Bits Number 
-0   1    2   3   4   5   6   7   8   9    10  11  12  13  14  15  16   17  18  19  20  21  22  23  .... 59  60  61  62  63  64  65
-1   0    0   1   1   1   1   0   0   0    0   1   1   0   0   0   0    0   1   1   0   0   0   0   ....  0   1   1   0   0  0   0    
-HEADER |     BLOCK TYPE FIELD          |     LPI VALUE C_block 0     |      LPI Value C_block 1        |    LPI Value C_Block 7     
-
-Possible Combinations if Control<7:0> = 0xff
-All Idle, 
-0x1e followed by 8, 7 bit Idle control chars
-All LPI
-0x1e followed by 8, 8 bit LPI Control Chars
-Starting Terminate followed by All Idle
-0x87, 7 0's ignored upon recieve, 8, 7 bit Idle Control Chars
-*/  
 localparam [1:0]
     D_Hdr           =   2'b10, 
     Ctrl_Hdr        =   2'b01;
@@ -70,41 +68,68 @@ localparam [6:0]
 // Block Type Field for Standard Control 66/64 Control Block
 localparam [7:0] BTF_Std_Ctrl = 8'h1e;     
 
-function automatic logic [DATA_WIDTH+HEADER_WIDTH-1:0] encoded_data; 
+function automatic void encode_tx_data; 
     ref logic [DATA_WIDTH-1:0]data_bits; 
     ref logic [CONTROL_WIDTH-1:0]control_bits; 
+    ref logic [DATA_WIDTH+HEADER_WIDTH-1:0] encoded_data;
     begin
-        // All Data bits Check
         case(control_bits)
             8'hff   :   begin
                 // All data_bits must be LPI or error TODO: Implement ERROR
-                if (data_bits == { 8{TxD_LPI} }) begin     
-                    //encoded_data = { {8{7'h06}}, 8'h1e, 2'b01 };
-                    encoded_data[65 -: 56] = { 8{LPI_Char} }; //8, 7 Bit Control Data Blocks
-                    encoded_data[2 +: 8]   = BTF_Std_Ctrl; 
-                    encoded_data[0 +: 2]   = Ctrl_Hdr;                 
- 
-                //all Idle Char 
-                end else if (data_bits == { 8{TxD_Idle} }) begin
-                    encoded_data[65 -: 56] = { 8{Idle_Char} };
-                    encoded_data[2 +: 8]   = BTF_Std_Ctrl;
+                if (data_bits == {8{TxD_LPI}}) begin     /* Function to Do the Encoding, its a function not a task because their should be no time that happens 
+The Following Example is for The Encoding for the all Control blocks and LPI is the signal
+Bits Number 
+0   1    2   3   4   5   6   7   8   9    10  11  12  13  14  15  16   17  18  19  20  21  22  23  .... 59  60  61  62  63  64  65
+1   0    0   1   1   1   1   0   0   0    0   1   1   0   0   0   0    0   1   1   0   0   0   0   ....  0   1   1   0   0  0   0    
+HEADER |     BLOCK TYPE FIELD          |     LPI VALUE C_block 0     |      LPI Value C_block 1        |    LPI Value C_Block 7     
+
+Possible Combinations if Control<7:0> = 0xff
+All Idle, 
+0x1e followed by 8, 7 bit Idle control chars
+All LPI
+0x1e followed by 8, 8 bit LPI Control Chars
+Starting Terminate followed by All Idle
+0x87, 7 0's ignored upon recieve, 8, 7 bit Idle Control Chars
+*/  
                     encoded_data[0 +: 2]   = Ctrl_Hdr;
-                
                 //Starting Terminate Followed by Idles
-                end else if (data_bits == { {7{TxD_Idle}}, TxD_Term }) begin
+                end else if (data_bits == {{7{TxD_Idle}}, TxD_Term}) begin
                     // 7 Idle Chars plus 7 Padding bits 
                     encoded_data[65 -: 56] = { {7{Idle_Char}}, 7'b0 };
                     encoded_data[2 +: 8]   = 8'h87;
                     encoded_data[0 +: 2]   = Ctrl_Hdr;                    
-
                 end else begin
-                    // TODO : Throw and Error or something if it isn't any of those, I.E. Its not valid
-                    // Data Being Sent to the PCS from the MAC 
+                    //TODO: This Is invalid so indicate an Error
+                    //Note Placeholder all errors throw a full set of Errors 
+                    encoded_data[65 -: 56] = {8{Error_Char}};
+                    encoded_data[2 +: 8]   = BTF_Std_Ctrl; 
+                    encoded_data[0 +: 2]   = Ctrl_Hdr;
                 end         
+            end
+            8'h01   :   begin
+                //Start on lane 0
+                if (data_bits[0 +: 8] == TxD_Start) begin
+                    encoded_data[0 +: 2]    = Ctrl_Hdr;
+                    encoded_data[2 +: 8]    = 8'h78;
+                    encoded_data[10 +: 56]  = data_bits[63 -: 56];
+                //Sequence on Lane 0 :)
+                end else if (data_bits[0 +: 8] == TxD_Seq) begin
+                    //Consist of control charcter followed by 3 data chars, followed by four zero data chars
+                    //TODO: Haven't done so throws out all 0s
+                    encoded_data[65:2] = 64'b0;
+                    encoded_data[0 +: 2]   = Ctrl_Hdr;
+                end else begin
+                    //TODO: This Is invalid so indicate an Error
+                    //Note Placeholder all errors throw a full set of Errors 
+                    encoded_data[65 -: 56] = {8{Error_Char}};
+                    encoded_data[2 +: 8]   = BTF_Std_Ctrl; 
+                    encoded_data[0 +: 2]   = Ctrl_Hdr;
+                end
             end
             //its all data Just pass it through
             8'h0    :   begin
-                encoded_data = data_bits;
+                encoded_data[0 +: 2]    = D_Hdr;
+                encoded_data[65 -: 64]  = data_bits;
             end
             //Terminate on TxD<15:8>
             8'hFE   :   begin
@@ -115,6 +140,10 @@ function automatic logic [DATA_WIDTH+HEADER_WIDTH-1:0] encoded_data;
                     encoded_data[65 -: 48]  = {{6{Idle_Char}}, 6'b0}; 
                 end else begin
                     //TODO: This Is invalid so indicate an Error
+                    //Note Placeholder all errors throw a full set of Errors 
+                    encoded_data[65 -: 56] = {8{Error_Char}};
+                    encoded_data[2 +: 8]   = BTF_Std_Ctrl; 
+                    encoded_data[0 +: 2]   = Ctrl_Hdr;
                 end
             end
             //Terminate on TxD<23:16>
@@ -126,6 +155,10 @@ function automatic logic [DATA_WIDTH+HEADER_WIDTH-1:0] encoded_data;
                     encoded_data[65 -: 40]  = {{5{Idle_Char}}, 5'b0}; 
                 end else begin
                     //TODO: This Is invalid so indicate an Error
+                    //Note Placeholder all errors throw a full set of Errors 
+                    encoded_data[65 -: 56] = {8{Error_Char}};
+                    encoded_data[2 +: 8]   = BTF_Std_Ctrl; 
+                    encoded_data[0 +: 2]   = Ctrl_Hdr;
                 end
             end
             //Terminate on TxD<31:24>
@@ -136,7 +169,11 @@ function automatic logic [DATA_WIDTH+HEADER_WIDTH-1:0] encoded_data;
                     encoded_data[10 +: 24]  = data_bits[0 +: 24];
                     encoded_data[65 -: 32]  = {{4{Idle_Char}}, 4'b0};
                 end else begin
-                    //TODO: This Is invalid so indicate an Error                 
+                    //TODO: This Is invalid so indicate an Error
+                    //Note Placeholder all errors throw a full set of Errors 
+                    encoded_data[65 -: 56] = {8{Error_Char}};
+                    encoded_data[2 +: 8]   = BTF_Std_Ctrl; 
+                    encoded_data[0 +: 2]   = Ctrl_Hdr;
                 end
             end
             //Terminate on TxD<39:32>
@@ -147,7 +184,11 @@ function automatic logic [DATA_WIDTH+HEADER_WIDTH-1:0] encoded_data;
                     encoded_data[10 +: 32]  = data_bits[0 +: 32];
                     encoded_data[65 -: 24]  = {{3{Idle_Char}}, 3'b0};
                 end else begin
-                    //TODO: This Is invalid so indicate an Error                 
+                    //TODO: This Is invalid so indicate an Error
+                    //Note Placeholder all errors throw a full set of Errors 
+                    encoded_data[65 -: 56] = {8{Error_Char}};
+                    encoded_data[2 +: 8]   = BTF_Std_Ctrl; 
+                    encoded_data[0 +: 2]   = Ctrl_Hdr;
                 end
             end
             //Terminate on TxD<47:40>
@@ -158,7 +199,11 @@ function automatic logic [DATA_WIDTH+HEADER_WIDTH-1:0] encoded_data;
                     encoded_data[10 +: 40]  = data_bits[0 +: 40];
                     encoded_data[65 -: 16]  = {{2{Idle_Char}}, 2'b0};
                 end else begin
-                    //TODO: This Is invalid so indicate an Error                 
+                    //TODO: This Is invalid so indicate an Error
+                    //Note Placeholder all errors throw a full set of Errors 
+                    encoded_data[65 -: 56] = {8{Error_Char}};
+                    encoded_data[2 +: 8]   = BTF_Std_Ctrl; 
+                    encoded_data[0 +: 2]   = Ctrl_Hdr;
                 end
             end
             //Terminate on TxD<55:48>
@@ -169,7 +214,11 @@ function automatic logic [DATA_WIDTH+HEADER_WIDTH-1:0] encoded_data;
                     encoded_data[10 +: 48]  = data_bits[0 +: 48];
                     encoded_data[65 -: 8]   = {Idle_Char, 1'b0}; 
                 end else begin
-                    //TODO: This Is invalid so indicate an Error                 
+                    //TODO: This Is invalid so indicate an Error
+                    //Note Placeholder all errors throw a full set of Errors 
+                    encoded_data[65 -: 56] = {8{Error_Char}};
+                    encoded_data[2 +: 8]   = BTF_Std_Ctrl; 
+                    encoded_data[0 +: 2]   = Ctrl_Hdr;
                 end
             end
             //Terminate on TxD<63:56>
@@ -179,19 +228,59 @@ function automatic logic [DATA_WIDTH+HEADER_WIDTH-1:0] encoded_data;
                     encoded_data[2 +: 8]    = 8'hFF;
                     encoded_data[10 +: 56]  = data_bits[0 +: 56];
                 end else begin
-                    //TODO: This Is invalid so indicate an Error                 
+                    //TODO: This Is invalid so indicate an Error
+                    //Note Placeholder all errors throw a full set of Errors 
+                    encoded_data[65 -: 56] = {8{Error_Char}};
+                    encoded_data[2 +: 8]   = BTF_Std_Ctrl; 
+                    encoded_data[0 +: 2]   = Ctrl_Hdr;
                 end
             end
-
-
-            
-            
-            
-            
         endcase        
-    end 
-     
+
+    end    
  endfunction
 
     
 endmodule
+
+/* Function to Do the Encoding, its a function not a task because their should be no time that happens 
+The Following Example is for The Encoding for the all Control blocks and LPI is the signal
+Bits Number 
+0   1    2   3   4   5   6   7   8   9    10  11  12  13  14  15  16   17  18  19  20  21  22  23  .... 59  60  61  62  63  64  65
+1   0    0   1   1   1   1   0   0   0    0   1   1   0   0   0   0    0   1   1   0   0   0   0   ....  0   1   1   0   0  0   0    
+HEADER |     BLOCK TYPE FIELD          |     LPI VALUE C_block 0     |      LPI Value C_block 1        |    LPI Value C_Block 7     
+
+Possible Combinations if Control<7:0> = 0xff
+All Idle, 
+0x1e followed by 8, 7 bit Idle control chars
+All LPI
+0x1e followed by 8, 8 bit LPI Control Chars
+Starting Terminate followed by All Idle
+0x87, 7 0's ignored upon recieve, 8, 7 bit Idle Control Chars
+*/  
+
+ /* Sample for fork
+ for (int i = 0;i < 5;i++) begin
+  fork
+    thread(i)
+  join_none
+end
+ */
+/*
+fork
+  some_other_process;
+join_none
+fork 
+  begin : isolation_process
+    for(int j=1; j <=3; ++j) begin : for_loop
+      fork
+         automatic int k = j;
+         begin
+            .... # use k here
+         end
+      join_none
+    end : for_loop
+  wait fork; // will not wait for some other process
+ end :isolation_thread
+ join
+*/
