@@ -18,8 +18,8 @@ module PCS #
     input TX_CLK,
     output RX_CLK, //Bruh I gotta drive the RX clock, FATTEST L 
     
-    input [DATA_WIDTH*LANES-1:0] TXD,
-    input [CONTROL_WIDTH*LANES-1:0] TX_C,
+    input logic [DATA_WIDTH*LANES-1:0] TXD,
+    input logic [CONTROL_WIDTH*LANES-1:0] TX_C,
     
     output [DATA_WIDTH*LANES-1:0] RX_Data_RS,
     output [CONTROL_WIDTH*LANES-1:0] RX_Data_RS,
@@ -27,27 +27,17 @@ module PCS #
     output [3:0] temp_error_outputs
 );
 
-wire [66*LANES-1:0] encoded_tx_data;
+logic [66*LANES-1:0] encoded_tx_data;
 
-initial begin
-    //This Makes me laugh :)
-    encode_tx_data = (DATA_WIDTH*LANES+HEADER_WIDTH*LANES-1)'b0;
-end
 
 always @* begin
-    fork
-        begin : encode_128_bits
-            for(int i=0; i<LANES; i++) begin : for_loop
-                encode_tx_data  ( .data_bits(TXD[DATA_WIDTH*(i+1)-1 -: DATA_WIDTH]), 
-                                  .control_bits(TX_C[CONTROL_WIDTH*(i+1)-1 -: CONTROL_WIDTH]),
-                                  .encoded_data(encode_tx_data[66*(i+1)-1 -: 66]) 
-                                );
-            end : for_loop    
-        end : encode_128_bits
-    join_none;
-    wait fork; //Wait for all the above join nones to complete
-end 
-
+    fork 
+        begin
+            encoded_data(TXD[63:0], TX_C[7:0], encoded_tx_data[65:0]);
+            encoded_data(TXD[127:64], TX_C[15:8], encoded_tx_data[131:66]); 
+        end
+    join
+end
 
 localparam [1:0]
     D_Hdr           =   2'b10, 
@@ -68,29 +58,22 @@ localparam [6:0]
 // Block Type Field for Standard Control 66/64 Control Block
 localparam [7:0] BTF_Std_Ctrl = 8'h1e;     
 
-function automatic void encode_tx_data; 
-    ref logic [DATA_WIDTH-1:0]data_bits; 
-    ref logic [CONTROL_WIDTH-1:0]control_bits; 
-    ref logic [DATA_WIDTH+HEADER_WIDTH-1:0] encoded_data;
+function automatic void encode_tx_data  ( ref logic [65:0]data_bits, 
+        ref logic [7:0]control_bits, ref logic [65:0] encoded_data ); 
+    
     begin
         case(control_bits)
             8'hff   :   begin
                 // All data_bits must be LPI or error TODO: Implement ERROR
-                if (data_bits == {8{TxD_LPI}}) begin     /* Function to Do the Encoding, its a function not a task because their should be no time that happens 
-The Following Example is for The Encoding for the all Control blocks and LPI is the signal
-Bits Number 
-0   1    2   3   4   5   6   7   8   9    10  11  12  13  14  15  16   17  18  19  20  21  22  23  .... 59  60  61  62  63  64  65
-1   0    0   1   1   1   1   0   0   0    0   1   1   0   0   0   0    0   1   1   0   0   0   0   ....  0   1   1   0   0  0   0    
-HEADER |     BLOCK TYPE FIELD          |     LPI VALUE C_block 0     |      LPI Value C_block 1        |    LPI Value C_Block 7     
-
-Possible Combinations if Control<7:0> = 0xff
-All Idle, 
-0x1e followed by 8, 7 bit Idle control chars
-All LPI
-0x1e followed by 8, 8 bit LPI Control Chars
-Starting Terminate followed by All Idle
-0x87, 7 0's ignored upon recieve, 8, 7 bit Idle Control Chars
-*/  
+                if (data_bits == {8{TxD_LPI}}) begin     
+                    //encoded_data = { {8{7'h06}}, 8'h1e, 2'b01 };
+                    encoded_data[65 -: 56] = { 8{LPI_Char} }; //8, 7 Bit Control Data Blocks
+                    encoded_data[2 +: 8]   = BTF_Std_Ctrl; 
+                    encoded_data[0 +: 2]   = Ctrl_Hdr;                 
+                //all Idle Char 
+                end else if (data_bits == {8{TxD_Idle}}) begin
+                    encoded_data[65 -: 56] = { 8{Idle_Char} };
+                    encoded_data[2 +: 8]   = BTF_Std_Ctrl;
                     encoded_data[0 +: 2]   = Ctrl_Hdr;
                 //Starting Terminate Followed by Idles
                 end else if (data_bits == {{7{TxD_Idle}}, TxD_Term}) begin
@@ -240,7 +223,6 @@ Starting Terminate followed by All Idle
     end    
  endfunction
 
-    
 endmodule
 
 /* Function to Do the Encoding, its a function not a task because their should be no time that happens 
@@ -258,7 +240,6 @@ All LPI
 Starting Terminate followed by All Idle
 0x87, 7 0's ignored upon recieve, 8, 7 bit Idle Control Chars
 */  
-
  /* Sample for fork
  for (int i = 0;i < 5;i++) begin
   fork
