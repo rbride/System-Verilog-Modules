@@ -7,44 +7,51 @@
 // Module Name: PCS
 // Additional Comments:
 //////////////////////////////////////////////////////////////////////////////////
+
+/* At the moment there might be an issue where the scrambler assumes msb is 64, but the data is
+going in as lsb is 64 and MSB is 0 I already have the reverse function, but tis what tis turning reverse on to 
+compensate, the reverse is on  */
+
 module PCS #
 (
     parameter LANES = 2,
-    localparam DATA_WIDTH = 64,
+    parameter DATA_WIDTH = 64,
+    parameter HEADER_WIDTH = 2,
     localparam CONTROL_WIDTH = 8,
-    localparam HEADER_WIDTH = 2
+    localparam BUS_WIDTH = (DATA_WIDTH+HEADER_WIDTH)*LANES
 )
 (
     input CLK,
-    output RX_CLK, //Bruh I gotta drive the RX clock, FATTEST L 
+    //output RX_CLK, //Bruh I gotta drive the RX clock, FATTEST L 
     
-    input logic [DATA_WIDTH*LANES-1:0] TXD,
+    input logic [DATA_WIDTH*LANES-1:0] TX_D,
     input logic [CONTROL_WIDTH*LANES-1:0] TX_C,
     
-    output [DATA_WIDTH*LANES-1:0] RX_Data_RS,
-    output [CONTROL_WIDTH*LANES-1:0] RX_Data_RS,
+    output [BUS_WIDTH-1:0] TX_PMA_Out,
     
     output [3:0] temp_error_outputs
 );
 
-bit [66*LANES-1:0] encoded_tx_data;
-logic [66*LANES-1:0] scrambled_tx_data;
+bit [BUS_WIDTH-1:0] encoded_tx_data;
+logic [BUS_WIDTH-1:0] scrambled_tx_data;
 
-
-encoder_scrambler #( .DATA_WIDTH(128), .LANES(2), .REVERSE(0) )
-    Scram1 ( .clk(CLK), .encoded_data_in( '{encoded_tx_data[129:66], encoded_tx_data[63:0]} ), 
-             .scrambled_data( '{scrambled_tx_data[129:66], scrambled_tx_data[63:0]} ),
-             .eee_enable(1'b0)
-        );  
-
+Encoder_66b_64b #( .DATA_WIDTH(DATA_WIDTH*LANES), .LANES(LANES), .REVERSE(1'b0) )
+        Encoder ( .clk(CLK),
+                  .eee_enable(1'b0),
+                  .encoded_data_in( '{encoded_tx_data[131-:64], encoded_tx_data[66-:64]} ),
+                  .tx_header( '{ encoded_tx_data[68:67], encoded_tx_data[1:0] } ), 
+                  .scrambled_data( TX_PMA_Out )
+                 );
+ 
 always @* begin
     fork 
         begin
-            encoded_data(TXD[63:0], TX_C[7:0], encoded_tx_data[65:0]);
-            encoded_data(TXD[127:64], TX_C[15:8], encoded_tx_data[131:66]); 
+            encoded_data(TX_D[63:0], TX_C[7:0], encoded_tx_data[65:0]);
+            encoded_data(TX_D[127:64], TX_C[15:8], encoded_tx_data[131:66]); 
         end
     join
 end
+
 
 localparam [1:0]
     D_Hdr           =   2'b10, 
