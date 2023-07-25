@@ -15,7 +15,7 @@ module PCS #
     localparam HEADER_WIDTH = 2
 )
 (
-    input TX_CLK,
+    input CLK,
     output RX_CLK, //Bruh I gotta drive the RX clock, FATTEST L 
     
     input logic [DATA_WIDTH*LANES-1:0] TXD,
@@ -27,8 +27,15 @@ module PCS #
     output [3:0] temp_error_outputs
 );
 
-logic [66*LANES-1:0] encoded_tx_data;
+bit [66*LANES-1:0] encoded_tx_data;
+logic [66*LANES-1:0] scrambled_tx_data;
 
+
+encoder_scrambler #( .DATA_WIDTH(128), .LANES(2), .REVERSE(0) )
+    Scram1 ( .clk(CLK), .encoded_data_in( '{encoded_tx_data[129:66], encoded_tx_data[63:0]} ), 
+             .scrambled_data( '{scrambled_tx_data[129:66], scrambled_tx_data[63:0]} ),
+             .eee_enable(1'b0)
+        );  
 
 always @* begin
     fork 
@@ -223,23 +230,9 @@ function automatic void encode_tx_data  ( ref logic [65:0]data_bits,
     end    
  endfunction
 
+    
 endmodule
 
-/* Function to Do the Encoding, its a function not a task because their should be no time that happens 
-The Following Example is for The Encoding for the all Control blocks and LPI is the signal
-Bits Number 
-0   1    2   3   4   5   6   7   8   9    10  11  12  13  14  15  16   17  18  19  20  21  22  23  .... 59  60  61  62  63  64  65
-1   0    0   1   1   1   1   0   0   0    0   1   1   0   0   0   0    0   1   1   0   0   0   0   ....  0   1   1   0   0  0   0    
-HEADER |     BLOCK TYPE FIELD          |     LPI VALUE C_block 0     |      LPI Value C_block 1        |    LPI Value C_Block 7     
-
-Possible Combinations if Control<7:0> = 0xff
-All Idle, 
-0x1e followed by 8, 7 bit Idle control chars
-All LPI
-0x1e followed by 8, 8 bit LPI Control Chars
-Starting Terminate followed by All Idle
-0x87, 7 0's ignored upon recieve, 8, 7 bit Idle Control Chars
-*/  
  /* Sample for fork
  for (int i = 0;i < 5;i++) begin
   fork
@@ -265,3 +258,19 @@ fork
  end :isolation_thread
  join
 */
+
+/* Function to Do the Encoding, its a function not a task because their should be no time that happens 
+The Following Example is for The Encoding for the all Control blocks and LPI is the signal
+Bits Number 
+0   1    2   3   4   5   6   7   8   9    10  11  12  13  14  15  16   17  18  19  20  21  22  23  .... 59  60  61  62  63  64  65
+1   0    0   1   1   1   1   0   0   0    0   1   1   0   0   0   0    0   1   1   0   0   0   0   ....  0   1   1   0   0  0   0    
+HEADER |     BLOCK TYPE FIELD          |     LPI VALUE C_block 0     |      LPI Value C_block 1        |    LPI Value C_Block 7     
+
+Possible Combinations if Control<7:0> = 0xff
+All Idle, 
+0x1e followed by 8, 7 bit Idle control chars
+All LPI
+0x1e followed by 8, 8 bit LPI Control Chars
+Starting Terminate followed by All Idle
+0x87, 7 0's ignored upon recieve, 8, 7 bit Idle Control Chars
+*/  
