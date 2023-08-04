@@ -12,39 +12,42 @@
 //      theory of the timing diagram based on this Ideal design or whatever, 
 //      and add it to you notes powerpoint Still needs Done
 //////////////////////////////////////////////////////////////////////////////////
+// On first recieve encoder will set the scrambler enable, when this is not set the reset is firing
+//
 
 // By Default Scrambles Least Significant Bit First, LSB, Setting Reverse to 1 would Reverse this to MSB
 // set to 7-64 for register and 65-128 for data in because it more so matches my truth 
-module scrambler_64bit #
+module Scrambler_64b #
 ( 
     parameter REVERSE = 0
 )
 (
     input CLK,
-    input eee_mode,
-    input logic [128:65] data_in,
-    output wire [64:1] data_out
+    input enable,
+    input wire [128:65] data_in,
+    input wire [1:0] header_in,
+    output reg [65:0] data_out
 );
-    
     //Default the LFSR state register starting at all ones. 
     // Bottom 6 are 0's because it doesn't matter only the top 58 are used in computations 
     reg [64:1] s1_64 = { {58{1'b1}},  6'b000000 };
     //Reverse Option
-    generate 
-        genvar n;
-        
+    generate
+        genvar n; 
         if ( REVERSE ) begin
-            for ( n=0; n<65; n++ ) begin
-                assign data_out[n] = s1_64[65-n-1];
+            for ( n=0; n<64; n++ ) begin
+                assign data_out[n+2] = s1_64[65-n-1];
+                assign data_out[1:0] = header_in[1:0];
             end
         end else begin
-            assign data_out = s1_64;
-        end
-      
-    endgenerate  
+            assign data_out[65:2] = s1_64[64:1];
+            assign data_out[1:0] = header_in[1:0];
+        end   
+    endgenerate
+    
     
     always @(posedge CLK) begin
-            if (eee_mode == 0) begin
+            if (enable == 1) begin
                 s1_64[1] <= s1_64[7] ^ s1_64[26] ^ data_in[65];
                 s1_64[2] <= s1_64[8] ^ s1_64[27] ^ data_in[66]; 
                 s1_64[3] <= s1_64[9] ^ s1_64[28] ^ data_in[67];
@@ -110,8 +113,8 @@ module scrambler_64bit #
                 s1_64[63] <= data_in[127] ^ s1_64[49] ^ data_in[88] ^ s1_64[11] ^ data_in[69];
                 s1_64[64] <= data_in[128] ^ s1_64[50] ^ data_in[89] ^ s1_64[12] ^ data_in[70];
             end else begin
-                s1_64 <= s1_64;
+                //Reset The Scrambler LFSR
+                s1_64 <= { {58{1'b1}},  6'b000000 };
             end 
         end
 endmodule
-`resetall
