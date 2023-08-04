@@ -1,6 +1,6 @@
 Working folder containing on going notes of what I am doing/working on 
 
-
+I am ignoring the existence and ridding the design of its 
 
 
 
