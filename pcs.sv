@@ -13,7 +13,6 @@
 //      the longer its up, its a cycle on delay. ) Total Delay with this add
 //      Will be 3.07692307692*4 = 12.308 Is Jover. 
 //////////////////////////////////////////////////////////////////////////////////
-
 /* At the moment there might be an issue where the scrambler assumes msb is 64, but the data is
 going in as lsb is 64 and MSB is 0 I already have the reverse function, but tis what tis turning reverse on to 
 compensate, the reverse is on  */
@@ -59,14 +58,6 @@ always @* begin
         enable_ecoder = '0;
     end
 end
-/*
-always @(posedge CLK, READY) begin
-    if(READY) begin
-        enable_encoder = 1'b1;
-            
-    end
-end
-*/
   
 //Generate 2 Encoder Lanes to take care of the 128 bit DATA Input
 generate 
@@ -100,54 +91,3 @@ generate
 endgenerate
 
 endmodule    
-/*
-//Cheap Fix Restructure and replace later
-    integer g; 
-    always @(posedge clk) begin
-        for( g=1; g<LANES+1; g++) begin
-            scrambled_data[ 65*(g-1)+1 -: 2] <= tx_header[2*(g)-1 -: 2]; 
-        end
-    end
-    
-     
-    //Generate the scramblers
-    generate
-        genvar i;
-        for ( i=0; i<LANES; i++) begin : Scramb
-            scrambler_64bit  #( .REVERSE(REVERSE) ) 
-                 u0 (   .CLK(clk),   
-                        .data_in(encoded_data_in[ 64*(i+1)-1 -: 64 ]),
-                        .data_out(scrambled_data[ 65*(i+1)+1 -: 64 ]),
-                        .eee_mode(eee_enable)
-                    ); 
-        end
-    endgenerate
-             
-endmodule
-*/
-   
- /* Sample for fork
- for (int i = 0;i < 5;i++) begin
-  fork
-    thread(i)
-  join_none
-end
- */
-/*
-fork
-  some_other_process;
-join_none
-fork 
-  begin : isolation_process
-    for(int j=1; j <=3; ++j) begin : for_loop
-      fork
-         automatic int k = j;
-         begin
-            .... # use k here
-         end
-      join_none
-    end : for_loop
-  wait fork; // will not wait for some other process
- end :isolation_thread
- join
-*/

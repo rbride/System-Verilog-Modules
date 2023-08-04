@@ -1,0 +1,47 @@
+Working folder containing on going notes of what I am doing/working on 
+
+
+
+
+
+
+
+
+//////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////
+///////////////////Code Snippets Saved from other files //////////////////////////
+//////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////
+
+//Cheap Fix Restructure and replace later
+    integer g; 
+    always @(posedge clk) begin
+        for( g=1; g<LANES+1; g++) begin
+            scrambled_data[ 65*(g-1)+1 -: 2] <= tx_header[2*(g)-1 -: 2]; 
+        end
+    end
+
+//Sample for fork
+for (int i = 0;i < 5;i++) begin
+    fork
+        thread(i)
+    join_none
+end
+
+fork
+  some_other_process;
+join_none
+fork 
+  begin : isolation_process
+    for(int j=1; j <=3; ++j) begin : for_loop
+      fork
+         automatic int k = j;
+         begin
+            .... # use k here
+         end
+      join_none
+    end : for_loop
+  wait fork; // will not wait for some other process
+ end :isolation_thread
+join
