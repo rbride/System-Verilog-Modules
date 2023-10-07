@@ -12,6 +12,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 //for reference upon completion for hookup
 //https://docs.xilinx.com/r/en-US/ug571-ultrascale-selectio/SelectIO-Interface-Attributes-and-Constraints
+//https://support.xilinx.com/s/article/61861?language=en_US
 module fmc_i2c_controller(
     input wire CLK,
     input wire en_fmc_board,
