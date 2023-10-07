@@ -1,0 +1,72 @@
+Order of operations for i2c.
+
+First the master Issues the "START" command:
+    - Start is sent by bringing SDA line low, while the SCL line is high,
+    - After that the Master controls and SCL line and generates the Clock Signals
+
+
+After this is issued, all Slaves listen to the "ADDRESS" sent by the Master
+After Address the Master Indicates if it wants to read or write, to or from, the Slave.
+    - 7 Bits (MSB) followed by a data direction bit. (Read or Write)
+    - '0' Write (transmitting data to slave)
+    - '1' Read  (request for data, reading data from slave)
+    - Each bit coincides with a clock high
+
+MASTER:
+Read
+    __    ___ ___ ___ ___ ___ ___ ___         ___ ___ ___ ___ ___ ___ ___ ___     ___ ___ ___ ___ ___ ___ ___ ___        __
+sda   \__/_6_X_5_X_4_X_3_X_2_X_1_X_0_\_R___A_/_7_X_6_X_5_X_4_X_3_X_2_X_1_X_0_\_A_/_7_X_6_X_5_X_4_X_3_X_2_X_1_X_0_\_A____/
+    ____   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   ____
+scl  ST \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ SP
+
+Write
+    __    ___ ___ ___ ___ ___ ___ ___ ___     ___ ___ ___ ___ ___ ___ ___ ___     ___ ___ ___ ___ ___ ___ ___ ___ ___    __
+sda   \__/_6_X_5_X_4_X_3_X_2_X_1_X_0_/ W \_A_/_7_X_6_X_5_X_4_X_3_X_2_X_1_X_0_\_A_/_7_X_6_X_5_X_4_X_3_X_2_X_1_X_0_/ N \__/
+    ____   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   ____
+scl  ST \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ SP
+
+
+Slave:
+Read
+    __    ___ ___ ___ ___ ___ ___ ___         ___ ___ ___ ___ ___ ___ ___ ___     ___ ___ ___ ___ ___ ___ ___ ___        __
+sda   \__/_6_X_5_X_4_X_3_X_2_X_1_X_0_\_R___A_/_7_X_6_X_5_X_4_X_3_X_2_X_1_X_0_\_A_/_7_X_6_X_5_X_4_X_3_X_2_X_1_X_0_\_A____/
+    ____   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   ____
+scl  ST \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ SP
+
+Write
+    __    ___ ___ ___ ___ ___ ___ ___ ___     ___ ___ ___ ___ ___ ___ ___ ___     ___ ___ ___ ___ ___ ___ ___ ___ ___    __
+sda   \__/_6_X_5_X_4_X_3_X_2_X_1_X_0_/ W \_A_/_7_X_6_X_5_X_4_X_3_X_2_X_1_X_0_\_A_/_7_X_6_X_5_X_4_X_3_X_2_X_1_X_0_/ N \__/
+    ____   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   _   ____
+scl  ST \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ \_/ SP
+
+
+[Str][7bit ADR][r/w_bit][data -------] -------
+
+The Slave with matching address will send "ACK"
+Used to indicate to the transmitter that the data has been successfully transmitted.
+Master Generates the clock pulse for acknowledge,  and releases its control of SDA during that pulse
+so that the reciever/slave can pull it down during that pulse thus acknowledging the signal
+if the slave does not ack. transfer is aborted.
+during this time, the master checks to ensure the slave pulls sda down during the ack period
+if it sees this. it is a succesfull acknowledge
+an ack must be sent by slave after every byte sent
+the first acknowledge is always sent by the slave. every following ack is sent by who ever is recieving
+    (slave in write to slave) (master in read from slave)
+
+
+When the Master Decides to Terminate Communication, its issues a "STOP"
+Stop is sent by transition the SDA line high while the SCL line is high.
+
+
+
+Afterwards, both SCL and SDA lines are freed and no longer touched by the Master
+until the next communication
+    - (both set back to high)
+
+
+
+
+Lines:
+    - When both bus are "free" both SDA and SCL are high.
+    - When a signal is desired to be sent the device that wants to send something has to investigate
+        the bus for sufficient period of time. 
