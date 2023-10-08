@@ -63,10 +63,18 @@ Afterwards, both SCL and SDA lines are freed and no longer touched by the Master
 until the next communication
     - (both set back to high)
 
-
-
-
 Lines:
     - When both bus are "free" both SDA and SCL are high.
     - When a signal is desired to be sent the device that wants to send something has to investigate
         the bus for sufficient period of time. 
+
+
+So. 
+According to the Si5338 Data sheet and FMC data sheet the clock should setup and automatically set
+itself to be transmitting at 156.25MHz so I do not need to address it.
+
+Nice.
+So first thing I am going to do the classic, the old school. Certified gangsta, register write to register 0x02, 
+bit 0 = 1 to enable led.
+wait like fucking half a minute
+then set it to 0, 
