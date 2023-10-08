@@ -37,6 +37,7 @@ IOBUF sda_buf(
     .T(sda_t)
 );
 
+
 //CLPD Address
  //Last two Bits are guesses based on assumptions made of crappy docs change if does not work
 localparam[7:0] CLPD_ADDR = 7'b01111_10; 
@@ -58,6 +59,10 @@ always *@ begin
 
 end
 
+//
+always @(posedge CLK)begin
+
+end
 
 
 
